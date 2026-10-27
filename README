@@ -1,0 +1,75 @@
+# Analyse de données d'une boutique
+
+Ce projet utilise PostgreSQL pour créer une petite base de données de boutique, la remplir avec des données d'exemple et exécuter des requêtes d'analyse en SQL.
+
+## Prérequis
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) avec Docker Compose
+
+## Démarrer la base de données
+
+Depuis le dossier du projet, démarrez le conteneur PostgreSQL :
+
+```powershell
+docker compose up -d
+```
+
+La base est accessible sur `localhost:5432` avec les paramètres définis dans `docker-compose.yml` :
+
+| Paramètre | Valeur |
+|---|---|
+| Base de données | `boutique` |
+| Utilisateur | `postgres` |
+| Mot de passe | `postgres` |
+| Port | `5432` |
+
+## Créer et remplir les tables
+
+Copiez les scripts SQL dans le conteneur, puis exécutez-les dans cet ordre :
+
+```powershell
+docker compose cp .\schema.sql db:/tmp/schema.sql
+docker compose exec db psql -U postgres -d boutique -f /tmp/schema.sql
+
+docker compose cp .\data.sql db:/tmp/data.sql
+docker compose exec db psql -U postgres -d boutique -f /tmp/data.sql
+```
+
+Le script `schema.sql` crée les tables et leurs contraintes. Le script `data.sql` insère des données d'exemple. Ces scripts sont à exécuter une seule fois sur une base vierge.
+
+## Exécuter les analyses
+
+Pour lancer toutes les requêtes de `analyse.sql` et afficher leurs résultats dans le terminal :
+
+```powershell
+docker compose cp .\analyse.sql db:/tmp/analyse.sql
+docker compose exec db psql -U postgres -d boutique -f /tmp/analyse.sql
+```
+
+Les requêtes couvrent notamment :
+
+- la consultation des clients et des produits ;
+- le nombre de clients et de commandes par statut ;
+- les stocks, prix et produits les plus ou moins chers ;
+- les commandes associées à leurs clients ;
+- le chiffre d'affaires total, par produit et par client ;
+- les dernières commandes et les montants des commandes.
+
+## Structure du projet
+
+| Fichier | Description |
+|---|---|
+| `docker-compose.yml` | Configuration du conteneur PostgreSQL et du stockage des données |
+| `schema.sql` | Création des tables `clients`, `produits`, `commandes` et `commande_details` |
+| `data.sql` | Données d'exemple pour tester les requêtes |
+| `analyse.sql` | Requêtes d'analyse SQL |
+
+## Arrêter la base
+
+```powershell
+docker compose down
+```
+
+Les données sont conservées dans le volume Docker `pgdata`. Pour cette raison, relancer les scripts de création et d'insertion sur une base déjà initialisée peut provoquer des erreurs de tables ou de clés déjà présentes.
+
+> Les identifiants configurés dans `docker-compose.yml` sont destinés à cet exercice local ; ne les utilisez pas tels quels dans un environnement de production.
