@@ -51,11 +51,11 @@ FROM commandes co
 JOIN clients c ON co.client_id = c.id;
 
 --11.	Lister les clients qui n’ont jamais commandé
-SELECT c.nom AS nom_client, 
-co.id AS id_commande, co.date_commande, co.statut
-FROM commandes co
-JOIN clients c ON co.client_id = c.id
-WHERE co.client_id NOT IN (SELECT DISTINCT client_id FROM commandes);
+SELECT c.id AS id_client,
+       c.nom AS nom_client
+FROM clients c
+LEFT JOIN commandes co ON co.client_id = c.id
+WHERE co.id IS NULL;
 
 -- 12.	Calculer le chiffre d’affaires total
 SELECT SUM(cd.quantite * cd.prix_unitaire) AS chiffre_affaires_total
@@ -121,3 +121,37 @@ FROM commande_details cd
 JOIN commandes co ON cd.commande_id = co.id
 GROUP BY co.id
 HAVING COUNT(cd.produit_id) > 1;
+
+-- 21.	Numéroter les commandes de chaque client, de la plus récente à la plus ancienne
+SELECT co.client_id,
+       co.id AS id_commande,
+       co.date_commande,
+       ROW_NUMBER() OVER (
+           PARTITION BY co.client_id
+           ORDER BY co.date_commande DESC, co.id DESC
+       ) AS numero_commande
+FROM commandes co;
+
+-- 22.	Classer les produits par chiffre d'affaires avec les ex aequo au même rang
+SELECT p.nom AS nom_produit,
+       SUM(cd.quantite * cd.prix_unitaire) AS chiffre_affaires,
+       RANK() OVER (
+           ORDER BY SUM(cd.quantite * cd.prix_unitaire) DESC
+       ) AS rang_chiffre_affaires
+FROM commande_details cd
+JOIN produits p ON cd.produit_id = p.id
+GROUP BY p.id, p.nom;
+
+-- 23.	Afficher le chiffre d'affaires calculé par client à l'aide d'une CTE
+WITH chiffre_affaires_clients AS (
+    SELECT c.id AS client_id,
+           c.nom AS nom_client,
+           SUM(cd.quantite * cd.prix_unitaire) AS chiffre_affaires
+    FROM commande_details cd
+    JOIN commandes co ON cd.commande_id = co.id
+    JOIN clients c ON co.client_id = c.id
+    GROUP BY c.id, c.nom
+)
+SELECT client_id, nom_client, chiffre_affaires
+FROM chiffre_affaires_clients
+ORDER BY chiffre_affaires DESC;
