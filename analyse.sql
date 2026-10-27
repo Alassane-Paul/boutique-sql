@@ -86,8 +86,8 @@ GROUP BY c.nom
 HAVING SUM(cd.quantite * cd.prix_unitaire) > 30000;
 
 -- 16.	Calculer le nombre de produits vendus par catégorie
-SELECT p.categorie, 
-        COUNT(*) AS nombre_produits
+SELECT p.categorie,
+       COUNT(DISTINCT cd.produit_id) AS nombre_produits_vendus
 FROM commande_details cd
 JOIN produits p ON cd.produit_id = p.id
 GROUP BY p.categorie;
@@ -115,22 +115,32 @@ JOIN commandes co ON cd.commande_id = co.id
 GROUP BY co.id;
 
 -- 20.	Afficher les commandes contenant plus d’un produit
-SELECT co.id AS id_commande, 
-       COUNT(cd.produit_id) AS nombre_produits
+SELECT co.id AS id_commande,
+       COUNT(DISTINCT cd.produit_id) AS nombre_produits_distincts
 FROM commande_details cd
 JOIN commandes co ON cd.commande_id = co.id
 GROUP BY co.id
-HAVING COUNT(cd.produit_id) > 1;
+HAVING COUNT(DISTINCT cd.produit_id) > 1;
 
 -- 21.	Numéroter les commandes de chaque client, de la plus récente à la plus ancienne
-SELECT co.client_id,
-       co.id AS id_commande,
-       co.date_commande,
-       ROW_NUMBER() OVER (
-           PARTITION BY co.client_id
-           ORDER BY co.date_commande DESC, co.id DESC
-       ) AS numero_commande
-FROM commandes co;
+WITH commandes_classees AS (
+    SELECT co.id,
+           co.client_id,
+           co.date_commande,
+           co.statut,
+           ROW_NUMBER() OVER (
+               PARTITION BY co.client_id
+               ORDER BY co.date_commande DESC, co.id DESC
+           ) AS rang
+    FROM commandes co
+)
+SELECT c.nom AS nom_client,
+       cc.id AS id_commande,
+       cc.date_commande AS derniere_commande,
+       cc.statut
+FROM commandes_classees cc
+JOIN clients c ON c.id = cc.client_id
+WHERE cc.rang = 1;
 
 -- 22.	Classer les produits par chiffre d'affaires avec les ex aequo au même rang
 SELECT p.nom AS nom_produit,
